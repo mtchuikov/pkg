@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,8 +26,8 @@ func testOnlyMethod(whitelistedMethod string) (int, bool) {
 func TestOnlyMethod_Allowed(t *testing.T) {
 	code, handlerCalled := testOnlyMethod(http.MethodGet)
 
-	errMsg := fmt.Sprintf("expected status code 200, got %v", code)
-	require.Equal(t, http.StatusOK, code, errMsg)
+	errMsg := "expected status code 200, got %v"
+	require.Equalf(t, http.StatusOK, code, errMsg, code)
 
 	require.True(t, handlerCalled, "expected handler to be called")
 }
@@ -36,8 +35,8 @@ func TestOnlyMethod_Allowed(t *testing.T) {
 func TestOnlyMethod_NotAllowed(t *testing.T) {
 	code, handlerCalled := testOnlyMethod(http.MethodPost)
 
-	errMsg := fmt.Sprintf("expected status code 405, got %v", code)
-	require.Equal(t, http.StatusMethodNotAllowed, code, errMsg)
+	errMsg := "expected status code 405, got %v"
+	require.Equalf(t, http.StatusMethodNotAllowed, code, errMsg, code)
 
 	require.False(t, handlerCalled, "expected handler not to be called")
 }

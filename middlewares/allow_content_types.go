@@ -26,10 +26,9 @@ func AllowContentTypes(contentTypes ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(rw http.ResponseWriter, req *http.Request) {
 			contentType := req.Header.Get("Content-Type")
-			if contentType != "" {
-				contentType = strings.Split(contentType, ";")[0]
-				contentType = strings.TrimSpace(strings.ToLower(contentType))
-			}
+
+			contentType = strings.Split(contentType, ";")[0]
+			contentType = strings.TrimSpace(strings.ToLower(contentType))
 
 			_, whitelisted := whitelist[contentType]
 			if !whitelisted {

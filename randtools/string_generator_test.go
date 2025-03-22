@@ -1,7 +1,6 @@
 package randtools
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 
@@ -15,9 +14,8 @@ func TestStringGenerator_StringLength(t *testing.T) {
 	str := generator.Generate(length)
 	strLen := len(str)
 
-	errMsg := fmt.Sprintf("expected string length to be %v, got %v",
-		length, strLen)
-	require.Equal(t, length, strLen, errMsg)
+	errMsg := "expected string length to be %v, got %v"
+	require.Equalf(t, length, strLen, errMsg, length, strLen)
 }
 
 func TestStringGenerator_Alphabet(t *testing.T) {
@@ -28,8 +26,8 @@ func TestStringGenerator_Alphabet(t *testing.T) {
 	for _, char := range str {
 		symbol := string(char)
 
-		errMsg := fmt.Sprintf("expected %v chat to be in alphabet %s", symbol, alphabet)
-		require.Contains(t, alphabet, symbol, errMsg)
+		errMsg := "expected %v chat to be in alphabet %s"
+		require.Contains(t, alphabet, symbol, errMsg, symbol, alphabet)
 	}
 }
 
@@ -55,8 +53,8 @@ func TestStringGenerator_Concurrency(t *testing.T) {
 			str := generator.Generate(10)
 			_, exists := strs.Load(str)
 
-			errMsg := fmt.Sprintf("expected unique string, but got duplicate: %s", str)
-			require.False(t, exists, errMsg)
+			errMsg := "expected unique string, but got duplicate: %s"
+			require.Falsef(t, exists, errMsg, str)
 
 			strs.Store(str, struct{}{})
 		}()

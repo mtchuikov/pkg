@@ -1,6 +1,8 @@
 package logtools
 
 import (
+	"errors"
+
 	"github.com/rs/zerolog"
 )
 
@@ -14,6 +16,8 @@ const (
 	Fatal = "fatal"
 	Panic = "panic"
 )
+
+var ErrInvalidLogLevel = errors.New("invalid log level")
 
 func (l LogLevel) validate() error {
 	if l == Debug || l == Info || l == Warn ||

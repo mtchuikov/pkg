@@ -26,20 +26,20 @@ func TestDecompress_NoCompression(t *testing.T) {
 		body, _ := io.ReadAll(req.Body)
 		payload := string(body)
 
-		errMsg := fmt.Sprintf("expected body '%s', got %s", mockPayload, payload)
-		require.Equal(t, mockPayload, payload, errMsg)
+		errMsg := "expected body '%s', got %s"
+		require.Equalf(t, mockPayload, payload, errMsg, mockPayload, payload)
 
-		errMsg = fmt.Sprintf("expected content lenght to be %v, got %v",
+		errMsg = "expected content lenght to be %v, got %v"
+		require.Equalf(t, mockContentLength, req.ContentLength, errMsg,
 			mockContentLength, req.ContentLength)
-		require.Equal(t, mockContentLength, req.ContentLength, errMsg)
 	}
 
 	rr := httptest.NewRecorder()
 	middleware := Decompress(http.HandlerFunc(handler))
 	middleware.ServeHTTP(rr, req)
 
-	errMsg := fmt.Sprintf("expected status code 200, got %v", rr.Code)
-	require.Equal(t, http.StatusOK, rr.Code, errMsg)
+	errMsg := "expected status code 200, got %v"
+	require.Equalf(t, http.StatusOK, rr.Code, errMsg, rr.Code)
 }
 
 func testDecompress_Success(
@@ -60,17 +60,16 @@ func testDecompress_Success(
 		body, _ := io.ReadAll(req.Body)
 		payload := string(body)
 
-		errMsg := fmt.Sprintf("expected body '%s', got '%s'", mockPayload, payload)
-		require.Equal(t, "payload", mockPayload, errMsg)
+		errMsg := "expected body '%s', got '%s'"
+		require.Equalf(t, "payload", mockPayload, errMsg, mockPayload, payload)
 
 		contentEncoding := req.Header.Get("Content-Encoding")
-		errMsg = fmt.Sprintf("expected content encoding to be removed, got %s",
-			contentEncoding)
-		require.Empty(t, contentEncoding, errMsg)
+		errMsg = "expected content encoding to be removed, got %s"
+		require.Emptyf(t, contentEncoding, errMsg, contentEncoding)
 
-		errMsg = fmt.Sprintf("expected content lenght to be %v, got %v",
+		errMsg = "expected content lenght to be %v, got %v"
+		require.Equalf(t, mockContentLength, req.ContentLength, errMsg,
 			mockContentLength, req.ContentLength)
-		require.Equal(t, mockContentLength, req.ContentLength, errMsg)
 	}
 
 	rr := httptest.NewRecorder()
@@ -115,8 +114,8 @@ func testDecompress_InvalidBody(
 	errMsg := "handler shouldn't be called on invalid body"
 	require.False(t, handlerCalled, errMsg)
 
-	errMsg = fmt.Sprintf("expected status code 400, got %v", rr.Code)
-	require.Equal(t, http.StatusBadRequest, rr.Code, errMsg)
+	errMsg = "expected status code 400, got %v"
+	require.Equalf(t, http.StatusBadRequest, rr.Code, errMsg, rr.Code)
 }
 
 func TestDecompress_InvalidDeflate(t *testing.T) {
