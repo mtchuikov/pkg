@@ -2,11 +2,12 @@ package middlewares
 
 import (
 	"bytes"
-	"compress/gzip"
-	"compress/zlib"
 	"io"
 	"net/http"
 	"sync"
+
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zlib"
 )
 
 var gzipReaderPool = sync.Pool{
@@ -30,11 +31,11 @@ func (r *pooledGzipReader) Close() error {
 	return err
 }
 
-var zlibInitReaderBytes = []byte{0x78, 0x9c, 0x01, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01}
+var zlibHeaderReaderBytes = []byte{0x78, 0x9c, 0x01, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01}
 
 var zlibReaderPool = sync.Pool{
 	New: func() any {
-		br := bytes.NewReader(zlibInitReaderBytes)
+		br := bytes.NewReader(zlibHeaderReaderBytes)
 		zr, _ := zlib.NewReader(br)
 		return zr
 	},
@@ -55,18 +56,18 @@ func (r *pooledZlibReader) Close() error {
 	return err
 }
 
-func resetContentEncoding(req *http.Request) {
+func deleteContentEncoding(req *http.Request) {
 	req.Header.Del("Content-Encoding")
 	req.ContentLength = -1
 }
 
-// Decompress is an HTTP middleware that decompresses request
-// body. It supports gzip and deflate encoded requests only as
-// most popular one. Before calling this middleware, ensure
-// that a request encoding format are verified for support. If
-// not, the request body, encoded with, for example, Brotli,
-// will be passed directly to the handler, which will not be
-// able to properly read it.
+// Decompress is an HTTP middleware that decompresses request body.
+// It supports gzip and deflate encoded requests only as most
+// popular one. Before calling this middleware, ensure that a
+// request encoding format are verified for support. If not, the
+// request body, encoded with, for example, Brotli, will be passed
+// directly to the handler, which will not be able to properly read
+// it.
 func Decompress(next http.Handler) http.Handler {
 	fn := func(rw http.ResponseWriter, req *http.Request) {
 		encoding := req.Header.Get("Content-Encoding")
@@ -81,7 +82,7 @@ func Decompress(next http.Handler) http.Handler {
 			}
 			defer zr.Close()
 
-			resetContentEncoding(req)
+			deleteContentEncoding(req)
 			req.Body = &pooledZlibReader{
 				zr:   zr,
 				pool: &zlibReaderPool,
@@ -97,7 +98,7 @@ func Decompress(next http.Handler) http.Handler {
 			}
 			defer gr.Close()
 
-			resetContentEncoding(req)
+			deleteContentEncoding(req)
 			req.Body = &pooledGzipReader{
 				gr:   gr,
 				pool: &gzipReaderPool,

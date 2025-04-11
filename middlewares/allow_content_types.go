@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-// AllowContentTypes is an HTTP middleware that restricts
-// allowed Content-Types. It takes a variadic list of permitted
-// content types and ensures the request's Content-Type matches
-// one (case-insensitive). The Content-Type is extracted,
-// parameters are removed, and it's compared to the whitelist.
-// If not allowed, it returns a 415 Unsupported Media Type
-// error. Otherwise, it passes to the next handler. Note that
-// Content-Type values are normalized to lowercase and trimmed,
-// and empty Content-Type is invalid unless explicitly allowed.
+// AllowContentTypes is an HTTP middleware that restricts allowed
+// Content-Types. It takes a variadic list of permitted content
+// types and ensures the request's Content-Type matches one
+// (case-insensitive). The Content-Type is extracted, parameters
+// are removed, and it's compared to the whitelist. If not allowed,
+// it returns a 415 Unsupported Media Type error. Otherwise, it
+// passes to the next handler. Note that Content-Type values are
+// normalized to lowercase and trimmed, and empty Content-Type is
+// invalid unless explicitly allowed
 func AllowContentTypes(contentTypes ...string) func(http.Handler) http.Handler {
 	contentTypesLen := len(contentTypes)
 	whitelist := make(map[string]struct{}, contentTypesLen)

@@ -2,126 +2,115 @@ package middlewares
 
 import (
 	"bytes"
-	"compress/gzip"
-	"compress/zlib"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zlib"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestDecompress_NoCompression(t *testing.T) {
-	const mockPayload = "payload"
-	const mockContentLength = int64(len(mockPayload))
+type testDecompressSuite struct {
+	suite.Suite
 
-	body := strings.NewReader(mockPayload)
-	req := httptest.NewRequest(http.MethodGet, "/", body)
-	req.ContentLength = mockContentLength
+	payload     []byte
+	payloadSize int64
+	body        *bytes.Buffer
+
+	req        *http.Request
+	rr         *httptest.ResponseRecorder
+	middleware http.Handler
+}
+
+func TestDecompressSuite(t *testing.T) {
+	suite.Run(t, new(testDecompressSuite))
+}
+
+func (s *testDecompressSuite) SetupTest() {
+	s.payload = []byte("hello world")
+	s.payloadSize = int64(len(s.payload))
+	s.body = &bytes.Buffer{}
+
+	s.req = httptest.NewRequest(http.MethodGet, "/", nil)
+	s.rr = httptest.NewRecorder()
 
 	handler := func(rw http.ResponseWriter, req *http.Request) {
-		body, _ := io.ReadAll(req.Body)
-		payload := string(body)
+		payload, err := io.ReadAll(req.Body)
 
-		errMsg := "expected body '%s', got %s"
-		require.Equalf(t, mockPayload, payload, errMsg, mockPayload, payload)
+		errMsg := "request body must be read"
+		s.Require().NoError(err, errMsg)
 
-		errMsg = "expected content lenght to be %v, got %v"
-		require.Equalf(t, mockContentLength, req.ContentLength, errMsg,
-			mockContentLength, req.ContentLength)
+		defer req.Body.Close()
+
+		errMsg = "invalid payload"
+		s.Require().Equal(s.payload, payload, errMsg)
+
+		errMsg = "invalid content length"
+		s.Require().Equal(s.payloadSize, req.ContentLength)
 	}
 
-	rr := httptest.NewRecorder()
-	middleware := Decompress(http.HandlerFunc(handler))
-	middleware.ServeHTTP(rr, req)
-
-	errMsg := "expected status code 200, got %v"
-	require.Equalf(t, http.StatusOK, rr.Code, errMsg, rr.Code)
+	s.middleware = Decompress(http.HandlerFunc(handler))
 }
 
-func testDecompress_Success(
-	t *testing.T,
-	w io.WriteCloser, body *bytes.Buffer,
-	contentEncoding string,
-) {
-	const mockPayload = "payload"
-	const mockContentLength = int64(-1)
+func (s *testDecompressSuite) TestDecompress_NoCompression() {
+	s.req.Body = io.NopCloser(bytes.NewBuffer(s.payload))
+	s.req.ContentLength = s.payloadSize
 
-	w.Write([]byte(mockPayload))
-	w.Close()
-
-	req := httptest.NewRequest(http.MethodGet, "/", body)
-	req.Header.Set("Content-Encoding", contentEncoding)
-
-	handler := func(rw http.ResponseWriter, req *http.Request) {
-		body, _ := io.ReadAll(req.Body)
-		payload := string(body)
-
-		errMsg := "expected body '%s', got '%s'"
-		require.Equalf(t, "payload", mockPayload, errMsg, mockPayload, payload)
-
-		contentEncoding := req.Header.Get("Content-Encoding")
-		errMsg = "expected content encoding to be removed, got %s"
-		require.Emptyf(t, contentEncoding, errMsg, contentEncoding)
-
-		errMsg = "expected content lenght to be %v, got %v"
-		require.Equalf(t, mockContentLength, req.ContentLength, errMsg,
-			mockContentLength, req.ContentLength)
-	}
-
-	rr := httptest.NewRecorder()
-	middleware := Decompress(http.HandlerFunc(handler))
-	middleware.ServeHTTP(rr, req)
-
-	errMsg := fmt.Sprintf("expected status code 200, got %v", rr.Code)
-	require.Equal(t, http.StatusOK, rr.Code, errMsg)
+	s.middleware.ServeHTTP(s.rr, s.req)
 }
 
-func TestDecompress_Deflate(t *testing.T) {
-	var body bytes.Buffer
-	zl := zlib.NewWriter(&body)
-	testDecompress_Success(t, zl, &body, "deflate")
+func (s *testDecompressSuite) TestDecompress_Deflate() {
+	s.payloadSize = -1
+
+	zwr := zlib.NewWriter(s.body)
+	zwr.Write(s.payload)
+	zwr.Close()
+
+	s.req.Body = io.NopCloser(s.body)
+	s.req.ContentLength = s.payloadSize
+	s.req.Header.Set("Content-Encoding", "deflate")
+
+	s.middleware.ServeHTTP(s.rr, s.req)
+
+	errMsg := "status code must be 200"
+	s.Require().Equal(http.StatusOK, s.rr.Code, errMsg)
 }
 
-func TestDecompress_Gzip(t *testing.T) {
-	var body bytes.Buffer
-	gz := gzip.NewWriter(&body)
-	testDecompress_Success(t, gz, &body, "gzip")
+func (s *testDecompressSuite) TestDecompress_Gzip() {
+	s.payloadSize = -1
+
+	gwr := gzip.NewWriter(s.body)
+	gwr.Write(s.payload)
+	gwr.Close()
+
+	s.req.Body = io.NopCloser(s.body)
+	s.req.ContentLength = s.payloadSize
+	s.req.Header.Set("Content-Encoding", "gzip")
+
+	s.middleware.ServeHTTP(s.rr, s.req)
+
+	errMsg := "status code must be 200"
+	s.Require().Equal(http.StatusOK, s.rr.Code, errMsg)
 }
 
-func testDecompress_InvalidBody(
-	t *testing.T,
-	contentEncoding string,
-) {
-	const mockPayload = "payload"
+func (s *testDecompressSuite) TestDecompress_DeflateBadPayload() {
+	s.req.Body = io.NopCloser(bytes.NewBuffer(s.payload))
+	s.req.Header.Set("Content-Encoding", "deflate")
 
-	body := strings.NewReader(mockPayload)
-	req := httptest.NewRequest(http.MethodGet, "/", body)
-	req.Header.Set("Content-Encoding", contentEncoding)
+	s.middleware.ServeHTTP(s.rr, s.req)
 
-	var handlerCalled bool
-	handler := func(rw http.ResponseWriter, req *http.Request) {
-		handlerCalled = true
-	}
-
-	rr := httptest.NewRecorder()
-	middleware := Decompress(http.HandlerFunc(handler))
-	middleware.ServeHTTP(rr, req)
-
-	errMsg := "handler shouldn't be called on invalid body"
-	require.False(t, handlerCalled, errMsg)
-
-	errMsg = "expected status code 400, got %v"
-	require.Equalf(t, http.StatusBadRequest, rr.Code, errMsg, rr.Code)
+	errMsg := "status code must be 400"
+	s.Require().Equal(http.StatusBadRequest, s.rr.Code, errMsg)
 }
 
-func TestDecompress_InvalidDeflate(t *testing.T) {
-	testDecompress_InvalidBody(t, "deflate")
-}
+func (s *testDecompressSuite) TestDecompress_GzipBadPayload() {
+	s.req.Body = io.NopCloser(bytes.NewBuffer(s.payload))
+	s.req.Header.Set("Content-Encoding", "gzip")
 
-func TestDecompress_InvalidGzip(t *testing.T) {
-	testDecompress_InvalidBody(t, "gzip")
+	s.middleware.ServeHTTP(s.rr, s.req)
+
+	errMsg := "status code must be 400"
+	s.Require().Equal(http.StatusBadRequest, s.rr.Code, errMsg)
 }

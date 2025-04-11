@@ -1,4 +1,4 @@
-package logtools
+package logging
 
 import (
 	"errors"

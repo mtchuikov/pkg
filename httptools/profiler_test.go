@@ -1,7 +1,6 @@
 package httptools
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,9 +15,8 @@ func TestRegisterProfilerHandlers(t *testing.T) {
 	paths := []string{
 		"/debug/pprof/",
 		"/debug/pprof/cmdline",
-		// don't want to test accessibility of this two
-		// commented endpoints accessability cause their
-		// invocation triggers long-running tasks
+		// Don't want to test accessibility of this two commented endpoints
+		// accessability cause their invocation triggers long-running tasks
 
 		// "/debug/pprof/profile",
 		"/debug/pprof/symbol",
@@ -37,7 +35,7 @@ func TestRegisterProfilerHandlers(t *testing.T) {
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 
-		errMsg := fmt.Sprintf("expected status code 200, got %v", rr.Code)
-		require.Equal(t, http.StatusOK, rr.Code, errMsg)
+		errMsg := "expected 200 status code when calling %s"
+		require.Equalf(t, http.StatusOK, rr.Code, errMsg, path)
 	}
 }

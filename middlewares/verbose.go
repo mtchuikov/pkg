@@ -30,10 +30,10 @@ func (r *verboseResponseWriter) WriteHeader(statusCode int) {
 
 // Verbose is an HTTP middleware that logs request and response
 // details. It records HTTP method, URL, client IP address,
-// user-agent, referer, response status code, duration of
-// request processing, and response size. This middleware is
-// useful for detailed monitoring and debugging of HTTP
-// requests and their handling behavior within the service.
+// user-agent, referer, response status code, duration of request
+// processing, and response size. This middleware is useful for
+// detailed monitoring and debugging of HTTP requests and their
+// handling behavior within the service.
 func Verbose(logger zerolog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(rw http.ResponseWriter, req *http.Request) {
@@ -60,7 +60,7 @@ func Verbose(logger zerolog.Logger) func(http.Handler) http.Handler {
 				Dur("duration", duration).
 				Int("size", respData.size).
 				Str("referer", req.Referer()).
-				Msg("http request handled")
+				Msg("request handled")
 		}
 
 		return http.HandlerFunc(fn)
